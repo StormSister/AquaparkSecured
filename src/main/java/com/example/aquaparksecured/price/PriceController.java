@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 //@CrossOrigin(origins = "http://localhost:3000")
 @RestController
-@RequestMapping("/api/prices")
+@RequestMapping("/prices")
 
 public class PriceController {
 
@@ -49,7 +49,7 @@ public class PriceController {
 //        return ResponseEntity.ok(foundPriceDTOs);
 //    }
 
-    @PostMapping("/add")
+    @PostMapping("/api/add")
     public ResponseEntity<PriceDTO> addPrice(@RequestBody PriceDTO priceDTO) {
         Price price = convertToEntity(priceDTO);
         Price savedPrice = priceService.addPrice(price);
@@ -57,7 +57,7 @@ public class PriceController {
         return ResponseEntity.ok(savedPriceDTO);
     }
 
-    @PutMapping("/update/{id}")
+    @PutMapping("/api/update/{id}")
     public ResponseEntity<PriceDTO> updatePrice(@PathVariable Long id, @RequestBody PriceDTO priceDTO) {
         Price price = convertToEntity(priceDTO);
         Price updatedPrice = priceService.updatePrice(id, price);
@@ -65,7 +65,7 @@ public class PriceController {
         return ResponseEntity.ok(updatedPriceDTO);
     }
 
-    @DeleteMapping("/delete/{id}")
+    @DeleteMapping("/api/delete/{id}")
     public ResponseEntity<Void> deletePrice(@PathVariable Long id) {
         priceService.deletePrice(id);
         return ResponseEntity.noContent().build();
