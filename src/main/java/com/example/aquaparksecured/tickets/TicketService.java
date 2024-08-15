@@ -1,7 +1,9 @@
 package com.example.aquaparksecured.tickets;
 
 
+import com.example.aquaparksecured.email.EmailService;
 import com.example.aquaparksecured.price.PriceRepository;
+import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,11 +12,8 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
-
 
 @Service
 public class TicketService {
@@ -28,11 +27,16 @@ public class TicketService {
     @Autowired
     private PdfService pdfService;
 
+    @Autowired
+    private EmailService emailService;
+
     @Transactional
     public Ticket findById(Long id) {
         return ticketRepository.findById(id).orElse(null);
     }
 
+
+    @Transactional
     public void purchaseTickets(String email, int adults, int children, boolean isGroup) {
         LocalDateTime purchaseDate = LocalDateTime.now();
         LocalDateTime expirationDate = purchaseDate.plusDays(31);
@@ -43,17 +47,23 @@ public class TicketService {
         System.out.println("Children: " + children);
         System.out.println("IsGroup: " + isGroup);
 
+        List<String> pdfPaths;
+
         if (isGroup) {
-            createGroupTicket(email, adults, children, purchaseDate, expirationDate);
+            pdfPaths = createGroupTicket(email, adults, children, purchaseDate, expirationDate);
         } else {
-            createIndividualTickets(email, adults, children, purchaseDate, expirationDate);
+            pdfPaths = createIndividualTickets(email, adults, children, purchaseDate, expirationDate);
         }
 
-        // Placeholder for sending email with PDF tickets
+        // Send the email with the generated PDFs as attachments
+        sendTicketsByEmail(email, pdfPaths);
+
+        System.out.println("Tickets generated and email sent.");
     }
 
-    private void createGroupTicket(String email, int adults, int children, LocalDateTime purchaseDate, LocalDateTime expirationDate) {
+    private List<String> createGroupTicket(String email, int adults, int children, LocalDateTime purchaseDate, LocalDateTime expirationDate) {
         double price = calculateGroupPrice(adults, children);
+        List<String> pdfPaths = new ArrayList<>();
         Ticket ticket = new Ticket();
         ticket.setEmail(email);
         ticket.setType("Group");
@@ -64,11 +74,14 @@ public class TicketService {
         ticket.setAdults(adults);
         ticket.setChildren(children);
         saveTicket(ticket);
+        pdfPaths.add(ticket.getPdfPath());
+        return pdfPaths;
     }
 
-    private void createIndividualTickets(String email, int adults, int children, LocalDateTime purchaseDate, LocalDateTime expirationDate) {
+    private List<String> createIndividualTickets(String email, int adults, int children, LocalDateTime purchaseDate, LocalDateTime expirationDate) {
         double adultPrice = priceRepository.findByTypeAndCategory("Ticket", "Standard").getValue();
         double childPrice = priceRepository.findByTypeAndCategory("Ticket", "Child").getValue();
+        List<String> pdfPaths = new ArrayList<>();
 
         for (int i = 0; i < adults; i++) {
             Ticket ticket = new Ticket();
@@ -81,6 +94,7 @@ public class TicketService {
             ticket.setAdults(1);
             ticket.setChildren(0);
             saveTicket(ticket);
+            pdfPaths.add(ticket.getPdfPath());
         }
 
         for (int i = 0; i < children; i++) {
@@ -94,10 +108,13 @@ public class TicketService {
             ticket.setAdults(0);
             ticket.setChildren(1);
             saveTicket(ticket);
+            pdfPaths.add(ticket.getPdfPath());
         }
+
+        return pdfPaths;
     }
 
-    private void saveTicket(Ticket ticket) {
+    private List<String> saveTicket(Ticket ticket) {
         ticket.setPdfPath("path/to/pdf");
         ticket.setStatus("active");
 
@@ -118,10 +135,25 @@ public class TicketService {
             String pdfPath = pdfService.generateTicketPdf(ticket);
             ticket.setPdfPath(pdfPath);
             ticketRepository.save(ticket);
-
             System.out.println("PDF generated successfully. Path: " + pdfPath);
-        } catch (IOException e) {
+//            return pdfPath;
 
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return Collections.emptyList();
+    }
+
+    private void sendTicketsByEmail(String email, List<String> pdfPaths) {
+        try {
+            emailService.sendEmailWithAttachments(
+                    email,
+                    "Your Tickets",
+                    "Thank you for your purchase! Please find your tickets attached.",
+                    pdfPaths
+            );
+        } catch (MessagingException | IOException e) {
             e.printStackTrace();
         }
     }
@@ -131,6 +163,7 @@ public class TicketService {
         double childPrice = priceRepository.findByTypeAndCategory("Ticket", "Child").getValue();
         return (adults * adultPrice) + (children * childPrice);
     }
+
 
     private String generateQrCode() {
         return UUID.randomUUID().toString();

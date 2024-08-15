@@ -24,8 +24,8 @@ import java.time.format.DateTimeFormatter;
 public class PdfService {
 
     public String generateTicketPdf(Ticket ticket) throws IOException {
-        // Directory path where PDFs will be saved
-        String directoryPath = "C:/Users/momika/Aquapark/src/tickets/";
+        // Relative directory path where PDFs will be saved
+        String directoryPath = "src/main/resources/tickets/";
 
         // Ensure directory exists; create if it doesn't
         File directory = new File(directoryPath);
@@ -37,15 +37,18 @@ public class PdfService {
         String pdfPath = directoryPath + "ticket_" + ticket.getId() + ".pdf";
 
         try {
-            // Create PdfWriter, PdfDocument, and Document
             PdfWriter writer = new PdfWriter(pdfPath);
             PdfDocument pdf = new PdfDocument(writer);
             Document document = new Document(pdf);
 
-            // Date formatter
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-            // Add ticket details to PDF
+            // Add logo to PDF
+            String logoPath = "src/main/resources/logo/logo.png";
+            Image logoImage = new Image(ImageDataFactory.create(logoPath));
+            document.add(logoImage);
+
+            // Add other ticket details
             document.add(new Paragraph("Ticket ID: " + ticket.getId()));
             document.add(new Paragraph("Email: " + ticket.getEmail()));
             document.add(new Paragraph("Type: " + ticket.getType()));
@@ -70,23 +73,18 @@ public class PdfService {
 
             // Add QR code to PDF
             Image qrCodeImage = new Image(ImageDataFactory.create(qrCodeFile.getAbsolutePath()));
-//            qrCodeImage.setHorizontalAlignment(HorizontalAlignment.CENTER);
-//            qrCodeImage.setVerticalAlignment(VerticalAlignment.MIDDLE);
             document.add(qrCodeImage);
 
-            // Close the document
             document.close();
 
             // Delete the temporary QR code file
             qrCodeFile.delete();
 
         } catch (IOException e) {
-            // Handle IOException (e.g., log it)
             e.printStackTrace();
             throw new IOException("Failed to generate PDF: " + e.getMessage());
         }
 
-        // Return the path where the PDF is saved
         return pdfPath;
     }
 
@@ -94,7 +92,7 @@ public class PdfService {
         try {
             BitMatrix matrix = new MultiFormatWriter().encode(qrCodeData, BarcodeFormat.QR_CODE, width, height);
             Path path = Paths.get(filePath);
-            MatrixToImageWriter.writeToPath(matrix, "PNG", path); // using ZXing's MatrixToImageWriter
+            MatrixToImageWriter.writeToPath(matrix, "PNG", path);
         } catch (Exception e) {
             e.printStackTrace();
         }

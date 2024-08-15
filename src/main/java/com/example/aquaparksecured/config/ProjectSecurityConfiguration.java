@@ -74,7 +74,7 @@ public class ProjectSecurityConfiguration {
                         .requestMatchers("/oauth2/**","/prices", "/confirm-payment", "/login/oauth2/**",
                                 "/currentUser",  "/error", "/register", "/invalidSession", "/apiLogin", "/favicon.ico",
                                 "/static/**", "/oauth2/**", "/login/oauth2/code/**", "/create-checkout-session","/email/send-email",
-                                "/login/oauth2/code/github", "/rooms/available", "/reservations", "/login", "static/tickets/purchase").permitAll()
+                                "/login/oauth2/code/github", "/rooms/available", "/reservations", "/login", "/tickets/purchase").permitAll()
                         .requestMatchers("/user", "/secure", "/reservations/api/all", "reservations/api/user").authenticated()
                         .requestMatchers("/api/**").authenticated()
                         );
