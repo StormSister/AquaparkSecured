@@ -60,7 +60,7 @@ public class EmailService {
         BodyPart messageBodyPart = new MimeBodyPart();
         messageBodyPart.setText(body);
         multipart.addBodyPart(messageBodyPart);
-        
+
         for (String path : attachmentPaths) {
             MimeBodyPart attachmentBodyPart = new MimeBodyPart();
             File file = new File(path);

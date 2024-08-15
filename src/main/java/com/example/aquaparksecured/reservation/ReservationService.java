@@ -1,15 +1,20 @@
 package com.example.aquaparksecured.reservation;
 
 
+import com.example.aquaparksecured.email.EmailService;
 import com.example.aquaparksecured.room.Room;
 import com.example.aquaparksecured.room.RoomRepository;
 import com.example.aquaparksecured.user.AppUser;
 
 import com.example.aquaparksecured.user.UserRepository;
+import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,12 +25,20 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
+    private final ReservationPdfService reservationPdfService;
+    private final EmailService emailService;
+
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    public ReservationService(ReservationRepository reservationRepository, RoomRepository roomRepository, UserRepository userRepository) {
+    public ReservationService(ReservationRepository reservationRepository, RoomRepository roomRepository, UserRepository userRepository, ReservationPdfService reservationPdfService, EmailService emailService, PasswordEncoder passwordEncoder) {
         this.reservationRepository = reservationRepository;
         this.roomRepository = roomRepository;
         this.userRepository = userRepository;
+        this.reservationPdfService = reservationPdfService;
+        this.emailService = emailService;
+        this.passwordEncoder = passwordEncoder;
+
     }
 
     public List<Reservation> getUserReservationsByEmail(String email) {
@@ -36,6 +49,7 @@ public class ReservationService {
         for (ReservationRequest request : reservationRequests) {
             System.out.println("Processing reservation request: " + request);
             List<Room> availableRooms = roomRepository.findAvailableRoomsByType(request.getStartDate(), request.getEndDate(), request.getRoomType());
+            List<String> pdfPaths = new ArrayList<>();
 
             if (availableRooms.isEmpty()) {
                 throw new ReservationException("No available rooms of type " + request.getRoomType() + " in the selected dates.");
@@ -45,6 +59,7 @@ public class ReservationService {
 
             AppUser user = userOptional.orElseGet(() -> {
                 AppUser newUser = new AppUser();
+                newUser.setPassword(passwordEncoder.encode("defaultPassword"));
                 newUser.setFirstName(request.getUser().getFirstName());
                 newUser.setLastName(request.getUser().getLastName());
                 newUser.setEmail(request.getUser().getEmail());
@@ -53,7 +68,6 @@ public class ReservationService {
                 return userRepository.save(newUser);
             });
 
-            // Reserve only the quantity specified by the request
             int quantity = request.getNumberOfPersons();
             for (int i = 0; i < quantity && i < availableRooms.size(); i++) {
                 Room room = availableRooms.get(i);
@@ -63,6 +77,16 @@ public class ReservationService {
                 reservation.setStartDate(request.getStartDate());
                 reservation.setEndDate(request.getEndDate());
                 reservationRepository.save(reservation);
+
+                try {
+                    String pdfPath = reservationPdfService.generateReservationPdf(reservation);
+                    pdfPaths.add(pdfPath);
+                    emailService.sendEmailWithAttachments(user.getEmail(), "Reservation Confirmation",
+                            "Your reservation is confirmed.", pdfPaths);
+                } catch (MessagingException | IOException e) {
+                    e.printStackTrace();
+                    throw new ReservationException("Failed to send confirmation email or generate PDF.");
+                }
             }
         }
     }
