@@ -49,7 +49,7 @@ public class TicketService {
             createIndividualTickets(email, adults, children, purchaseDate, expirationDate);
         }
 
-        // Placeholder for payment processing and sending email with PDF tickets
+        // Placeholder for sending email with PDF tickets
     }
 
     private void createGroupTicket(String email, int adults, int children, LocalDateTime purchaseDate, LocalDateTime expirationDate) {

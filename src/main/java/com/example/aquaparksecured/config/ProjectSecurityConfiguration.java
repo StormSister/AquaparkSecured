@@ -16,17 +16,11 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.config.oauth2.client.CommonOAuth2Provider;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.client.registration.ClientRegistration;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
@@ -35,8 +29,6 @@ import org.springframework.web.cors.CorsConfiguration;
 
 import java.util.Arrays;
 import java.util.Collections;
-
-import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @Profile("!prod")
@@ -81,8 +73,8 @@ public class ProjectSecurityConfiguration {
                 .authorizeHttpRequests((requests) -> requests
                         .requestMatchers("/oauth2/**","/prices", "/confirm-payment", "/login/oauth2/**",
                                 "/currentUser",  "/error", "/register", "/invalidSession", "/apiLogin", "/favicon.ico",
-                                "/static/**", "/oauth2/**", "/login/oauth2/code/**", "/create-checkout-session",
-                                "/login/oauth2/code/github", "/rooms/available", "/reservations", "/login","tickets/purchase").permitAll()
+                                "/static/**", "/oauth2/**", "/login/oauth2/code/**", "/create-checkout-session","/email/send-email",
+                                "/login/oauth2/code/github", "/rooms/available", "/reservations", "/login", "static/tickets/purchase").permitAll()
                         .requestMatchers("/user", "/secure", "/reservations/api/all", "reservations/api/user").authenticated()
                         .requestMatchers("/api/**").authenticated()
                         );
