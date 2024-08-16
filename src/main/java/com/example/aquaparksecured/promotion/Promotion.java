@@ -32,8 +32,6 @@ public class Promotion {
     @Column(name = "description")
     private String description;
 
-    @Lob
-    @Column(name = "image", columnDefinition = "bytea")
-    private byte[] image;
-
+    @Column(name = "image_path")
+    private String imagePath;
 }

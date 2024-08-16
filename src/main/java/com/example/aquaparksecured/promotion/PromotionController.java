@@ -1,74 +1,122 @@
 package com.example.aquaparksecured.promotion;
 
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:3000")
-@RequestMapping("/promotions")
+@RequestMapping("/api/promotions")
 public class PromotionController {
+
+    @Value("${file.upload-dir}")
+    private String uploadDir;
 
     private final PromotionService promotionService;
 
-    @Autowired
     public PromotionController(PromotionService promotionService) {
         this.promotionService = promotionService;
     }
 
-    @PostMapping("/api/add")
-    public ResponseEntity<String> addPromotion(
+    @PostMapping("/add")
+    public ResponseEntity<?> addPromotion(
             @RequestParam("startDate") String startDateStr,
             @RequestParam("endDate") String endDateStr,
             @RequestParam("discountType") String discountType,
             @RequestParam("discountAmount") int discountAmount,
             @RequestParam("description") String description,
-            @RequestParam(value = "image", required = false) MultipartFile image
-    ) {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
-        try {
-            Date startDate = dateFormat.parse(startDateStr);
-            Date endDate = dateFormat.parse(endDateStr);
+            @RequestParam(value = "image", required = false) MultipartFile imageFile) {
 
-            promotionService.addPromotion(startDate, endDate, discountType, discountAmount, description, image);
-            return ResponseEntity.ok("Promocja została dodana!");
-        } catch (ParseException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Nieprawidłowy format daty!");
-        } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Wystąpił błąd podczas dodawania promocji!");
+        // Logowanie danych wejściowych
+        System.out.println("Received startDate: " + startDateStr);
+        System.out.println("Received endDate: " + endDateStr);
+        System.out.println("Received discountType: " + discountType);
+        System.out.println("Received discountAmount: " + discountAmount);
+        System.out.println("Received description: " + description);
+
+        if (imageFile != null) {
+            System.out.println("Received image file: " + imageFile.getOriginalFilename());
+            System.out.println("Image file size: " + imageFile.getSize() + " bytes");
+        } else {
+            System.out.println("No image file received.");
         }
-    }
 
-    @GetMapping("/current")
-    public ResponseEntity<List<Promotion>> getCurrentPromotions() {
-        List<Promotion> promotions = promotionService.getCurrentPromotions();
-        return ResponseEntity.ok(promotions);
-    }
+        // Walidacja danych wejściowych
+        if (startDateStr == null || endDateStr == null || discountType == null || description == null) {
+            return ResponseEntity.badRequest().body("Brakuje wymaganych pól.");
+        }
 
-    @GetMapping(value = "/image/{id}", produces = MediaType.IMAGE_JPEG_VALUE)
-    public ResponseEntity<byte[]> getPromotionImage(@PathVariable Long id) throws IOException {
-        byte[] image = promotionService.getPromotionImage(id);
-        return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG).body(image);
-    }
+        // Konwersja dat z formatu ISO 8601 do LocalDateTime
+        DateTimeFormatter isoFormatter = DateTimeFormatter.ISO_DATE_TIME;
+        LocalDateTime startDate = LocalDateTime.parse(startDateStr, isoFormatter);
+        LocalDateTime endDate = LocalDateTime.parse(endDateStr, isoFormatter);
 
-    @GetMapping("/api/search")
-    public ResponseEntity<List<Promotion>> searchPromotions(
-            @RequestParam(name = "startDate", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") Date startDate,
-            @RequestParam(name = "endDate", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") Date endDate,
-            @RequestParam(name = "type", required = false) String discountType
-    ) {
-        List<Promotion> promotions = promotionService.searchPromotions(startDate, endDate, discountType);
-        return ResponseEntity.ok(promotions);
+        // Konwersja LocalDateTime na Timestamp
+        Timestamp sqlStartDate = Timestamp.valueOf(startDate.atZone(ZoneId.of("UTC")).toLocalDateTime());
+        Timestamp sqlEndDate = Timestamp.valueOf(endDate.atZone(ZoneId.of("UTC")).toLocalDateTime());
+
+        Promotion promotion = new Promotion();
+        promotion.setStartDate(sqlStartDate);
+        promotion.setEndDate(sqlEndDate);
+        promotion.setDiscountType(discountType);
+        promotion.setDiscountAmount(discountAmount);
+        promotion.setDescription(description);
+
+        // Obsługa pliku
+        if (imageFile != null && !imageFile.isEmpty()) {
+            try {
+                // Tworzenie unikalnej nazwy pliku, aby uniknąć nadpisywania
+                String uniqueFilename = UUID.randomUUID().toString() + "_" + imageFile.getOriginalFilename();
+                Path imagePath = Paths.get(uploadDir, uniqueFilename);
+
+                // Tworzenie folderu, jeśli nie istnieje
+                if (!Files.exists(imagePath.getParent())) {
+                    Files.createDirectories(imagePath.getParent());
+                }
+
+                // Zapis pliku na dysk
+                Files.write(imagePath, imageFile.getBytes());
+
+                // Ustawienie ścieżki pliku w obiekcie promocji
+                promotion.setImagePath("/uploads/" + uniqueFilename);
+
+                // Logowanie ścieżki zapisanego pliku
+                System.out.println("Image saved at: " + imagePath.toString());
+
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.out.println("Error while saving file: " + e.getMessage());
+                return ResponseEntity.status(500).body("Błąd podczas zapisywania pliku.");
+            }
+        }
+
+        // Zapis promocji
+        promotionService.savePromotion(promotion);
+
+        // Logowanie informacji o zapisanej promocji
+        System.out.println("Promotion saved with ID: " + promotion.getId());
+        System.out.println("Promotion details: " +
+                "Start Date: " + promotion.getStartDate() +
+                ", End Date: " + promotion.getEndDate() +
+                ", Discount Type: " + promotion.getDiscountType() +
+                ", Discount Amount: " + promotion.getDiscountAmount() +
+                ", Description: " + promotion.getDescription() +
+                ", Image Path: " + promotion.getImagePath());
+
+        return ResponseEntity.ok("Promocja została dodana.");
     }
 }
