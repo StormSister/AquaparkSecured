@@ -71,10 +71,9 @@ public class ProjectSecurityConfiguration {
                 .addFilterAfter(new JWTTokenGeneratorFilter(), BasicAuthenticationFilter.class)
 //                .requiresChannel(rcc -> rcc.anyRequest().requiresInsecure()) // HTTP
                 .authorizeHttpRequests((requests) -> requests
-                        .requestMatchers("/oauth2/**","/prices", "/confirm-payment", "/login/oauth2/**",
-                                "/currentUser",  "/error", "/register", "/invalidSession", "/apiLogin", "/favicon.ico",
+                        .requestMatchers("/oauth2/**","/prices", "/confirm-payment", "/login/oauth2/**",  "/error", "/register", "/invalidSession", "/apiLogin", "/favicon.ico",
                                 "/static/**", "/oauth2/**", "/login/oauth2/code/**", "/create-checkout-session","/email/send-email",
-                                "/login/oauth2/code/github", "/rooms/available", "/reservations", "/login", "/tickets/purchase").permitAll()
+                                "/login/oauth2/code/github","/api/promotions/current","/uploads/**", "/rooms/available", "/reservations", "/login", "/tickets/purchase").permitAll()
                         .requestMatchers("/user", "/secure", "/reservations/api/all", "reservations/api/user").authenticated()
                         .requestMatchers("/api/**").authenticated()
                         );

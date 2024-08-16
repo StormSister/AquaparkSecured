@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 
+import java.sql.Timestamp;
 import java.util.Date;
 import java.util.List;
 
@@ -23,4 +24,6 @@ public interface PromotionRepository extends JpaRepository<Promotion, Long> {
             @Param("endDate") Date endDate,
             @Param("discountType") String discountType
     );
+
+    List<Promotion> findByStartDateBeforeAndEndDateAfter(Timestamp startDate, Timestamp endDate);
 }

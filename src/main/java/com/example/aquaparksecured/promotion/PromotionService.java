@@ -3,6 +3,10 @@ package com.example.aquaparksecured.promotion;
 
 import org.springframework.stereotype.Service;
 
+
+import java.sql.Timestamp;
+import java.util.List;
+
 @Service
 public class PromotionService {
 
@@ -14,5 +18,9 @@ public class PromotionService {
 
     public Promotion savePromotion(Promotion promotion) {
         return promotionRepository.save(promotion);
+    }
+
+    public List<Promotion> getCurrentPromotions(Timestamp currentTimestamp) {
+        return promotionRepository.findByStartDateBeforeAndEndDateAfter(currentTimestamp, currentTimestamp);
     }
 }
