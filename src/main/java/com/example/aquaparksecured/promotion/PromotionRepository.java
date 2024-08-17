@@ -6,8 +6,10 @@ import org.springframework.data.repository.query.Param;
 
 
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 
 public interface PromotionRepository extends JpaRepository<Promotion, Long> {
@@ -26,4 +28,8 @@ public interface PromotionRepository extends JpaRepository<Promotion, Long> {
     );
 
     List<Promotion> findByStartDateBeforeAndEndDateAfter(Timestamp startDate, Timestamp endDate);
+
+    @Query("SELECT p FROM Promotion p WHERE p.startDate <= :now AND p.endDate >= :now AND p.discountType = :category")
+    Optional<Promotion> findActivePromotionForCategory(@Param("now") LocalDateTime now, @Param("category") String category);
+
 }

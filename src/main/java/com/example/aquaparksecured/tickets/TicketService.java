@@ -1,8 +1,9 @@
 package com.example.aquaparksecured.tickets;
 
 import com.example.aquaparksecured.email.EmailService;
-import com.example.aquaparksecured.price.Price;
 import com.example.aquaparksecured.price.PriceRepository;
+import com.example.aquaparksecured.promotion.Promotion;
+import com.example.aquaparksecured.promotion.PromotionRepository;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,11 @@ public class TicketService {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private PromotionRepository promotionRepository;
+
+
 
     @Transactional
     public Ticket findById(Long id) {
@@ -300,5 +306,22 @@ public class TicketService {
         }
 
         return ticket;
+    }
+
+    public double applyPromotionIfAvailable(double originalPrice, String category) {
+        LocalDateTime now = LocalDateTime.now();
+        Optional<Promotion> promotion = promotionRepository.findActivePromotionForCategory(now, category);
+        System.out.println("Promotion: " + promotion);
+
+        if (promotion.isPresent()) {
+            Promotion activePromotion = promotion.get();
+            double discount = activePromotion.getDiscountAmount();
+            double discountedPrice = originalPrice * (1 - discount / 100.0);
+
+            // Round to the nearest whole number
+            return Math.round(discountedPrice);
+        }
+
+        return originalPrice;
     }
 }

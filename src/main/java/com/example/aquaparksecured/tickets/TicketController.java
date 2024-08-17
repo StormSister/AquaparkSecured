@@ -85,17 +85,24 @@ public class TicketController {
 
     @GetMapping("/ticket-types")
     public ResponseEntity<List<Map<String, Object>>> getTicketTypesAndPrices() {
+        // Pobieramy wszystkie ceny biletów
         List<Price> ticketPrices = priceService.getPricesByType("Ticket");
 
+        // Tworzymy listę, która będzie przechowywać informacje o biletach
         List<Map<String, Object>> ticketTypes = ticketPrices.stream()
                 .map(price -> {
                     Map<String, Object> ticketInfo = new HashMap<>();
                     ticketInfo.put("type", price.getType());
                     ticketInfo.put("category", price.getCategory());
-                    ticketInfo.put("price", price.getValue());
+
+                    // Zastosowanie promocji, jeśli dostępna
+                    double finalPrice = ticketService.applyPromotionIfAvailable(price.getValue(), price.getCategory());
+
+                    ticketInfo.put("price", finalPrice); // Dodanie ostatecznej ceny biletu (uwzględniającej promocję)
                     return ticketInfo;
                 })
                 .collect(Collectors.toList());
+
         System.out.println("Ticket types and prices: " + ticketTypes);
         return ResponseEntity.ok(ticketTypes);
     }
