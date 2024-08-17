@@ -6,7 +6,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
-//@CrossOrigin(origins = "http://localhost:3000")
 @RestController
 @RequestMapping("/prices")
 
@@ -25,29 +24,6 @@ public class PriceController {
         return ResponseEntity.ok(prices);
     }
 
-//    @GetMapping("/search")
-//    public ResponseEntity<List<PriceDTO>> searchPrices(
-//            @RequestParam(value = "type", required = false) String type,
-//            @RequestParam(value = "category", required = false) String category) {
-//
-//        List<Price> foundPrices;
-//
-//        if (type != null && category != null) {
-//            foundPrices = priceService.findByTypeAndCategory(type, category);
-//        } else if (type != null) {
-//            foundPrices = priceService.findByType(type);
-//        } else if (category != null) {
-//            foundPrices = priceService.findByCategory(category);
-//        } else {
-//            // Zwróć wszystkie ceny, gdy żaden parametr nie jest podany
-//            foundPrices = priceService.getAllPrices();
-//        }
-//
-//        List<PriceDTO> foundPriceDTOs = foundPrices.stream()
-//                .map(this::convertToDTO)
-//                .collect(Collectors.toList());
-//        return ResponseEntity.ok(foundPriceDTOs);
-//    }
 
     @PostMapping("/api/add")
     public ResponseEntity<PriceDTO> addPrice(@RequestBody PriceDTO priceDTO) {

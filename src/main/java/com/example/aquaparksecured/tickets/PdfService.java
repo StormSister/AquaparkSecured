@@ -56,7 +56,7 @@ public class PdfService {
             document.add(new Paragraph("Purchase Date: " + ticket.getPurchaseDate().format(formatter)));
             document.add(new Paragraph("Expiration Date: " + ticket.getExpirationDate().format(formatter)));
             document.add(new Paragraph("Adults: " + ticket.getAdults()));
-            document.add(new Paragraph("Children: " + ticket.getChildren()));
+            document.add(new Paragraph("Seniors: " + ticket.getSeniors()));
 
             // Generate QR code
             String qrCodeData = "Ticket ID: " + ticket.getId() + "\n" +
@@ -66,7 +66,7 @@ public class PdfService {
                     "Purchase Date: " + ticket.getPurchaseDate().format(formatter) + "\n" +
                     "Expiration Date: " + ticket.getExpirationDate().format(formatter) + "\n" +
                     "Adults: " + ticket.getAdults() + "\n" +
-                    "Children: " + ticket.getChildren();
+                    "Seniors: " + ticket.getSeniors();
 
             File qrCodeFile = new File(directoryPath + "qr_" + ticket.getId() + ".png");
             generateQRCode(qrCodeData, qrCodeFile.getAbsolutePath(), 200, 200);

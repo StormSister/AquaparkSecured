@@ -1,8 +1,6 @@
 package com.example.aquaparksecured.tickets;
 
-
 import com.example.aquaparksecured.user.AppUser;
-
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import lombok.Getter;
@@ -44,14 +42,11 @@ public class Ticket {
     private int adults;
 
     @Column(nullable = false)
-    private int children;
+    private int seniors;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String pdfPath;
 
     @Column(nullable = false)
     private String status;
-
-
-
 }

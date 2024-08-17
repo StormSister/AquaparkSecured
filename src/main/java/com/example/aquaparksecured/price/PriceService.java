@@ -50,4 +50,8 @@ public class PriceService {
     public List<Price> getAllPrices() {
         return priceRepository.findAll();
     }
+
+    public List<Price> getPricesByType(String type) {
+        return priceRepository.findByType(type);
+    }
 }
