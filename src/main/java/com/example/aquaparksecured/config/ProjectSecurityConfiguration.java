@@ -73,8 +73,8 @@ public class ProjectSecurityConfiguration {
                 .authorizeHttpRequests((requests) -> requests
                         .requestMatchers("/oauth2/**","/prices","/tickets/ticket-types", "/confirm-payment", "/login/oauth2/**",  "/error", "/register", "/invalidSession", "/apiLogin", "/favicon.ico",
                                 "/static/**", "/oauth2/**", "/login/oauth2/code/**", "/create-checkout-session","/email/send-email",
-                                "/login/oauth2/code/github","/api/promotions/current","/uploads/**", "/rooms/available", "/reservations", "/login", "/tickets/purchase").permitAll()
-                        .requestMatchers("/user", "/secure", "/reservations/api/all", "reservations/api/user", "prices/api/add", "/prices/api/delete/{priceId}","/prices/api/update/{id}").authenticated()
+                                "/login/oauth2/code/github","/promotions/current","/uploads/**", "/rooms/available", "/reservations", "/login", "/tickets/purchase").permitAll()
+                        .requestMatchers("/user", "/secure", "/reservations/api/all", "reservations/api/user", "prices/api/add", "/prices/api/delete/{priceId}","/prices/api/update/{id}", "/tickets/api/check-qr").authenticated()
                         .requestMatchers("/api/**").authenticated()
                         );
         http.formLogin().disable();

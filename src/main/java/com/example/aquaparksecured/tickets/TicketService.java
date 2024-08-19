@@ -46,7 +46,6 @@ public class TicketService {
         LocalDateTime purchaseDate = LocalDateTime.now();
         LocalDateTime expirationDate = purchaseDate.plusDays(31);
 
-        // Check if 'Excursion' ticket type is selected
         Optional<Map<String, Object>> excursionDetail = ticketDetails.stream()
                 .filter(detail -> "Excursion".equals(detail.get("category")))
                 .findFirst();
@@ -61,52 +60,50 @@ public class TicketService {
         List<String> pdfPaths;
 
         if (isGroup) {
-            // Handle group ticket
             pdfPaths = createGroupTicket(email, ticketDetails, purchaseDate, expirationDate);
         } else {
-            // Handle individual tickets
             pdfPaths = createIndividualTickets(email, ticketDetails, purchaseDate, expirationDate);
         }
 
-        // Send the email with the generated PDFs as attachments
         sendTicketsByEmail(email, pdfPaths);
     }
 
     private List<String> createGroupTicket(String email, List<Map<String, Object>> ticketDetails, LocalDateTime purchaseDate, LocalDateTime expirationDate) {
-        double totalPrice = calculateGroupPrice(ticketDetails);
+        double totalPrice = 0.0;
         List<String> pdfPaths = new ArrayList<>();
         Ticket ticket = new Ticket();
         ticket.setEmail(email);
         ticket.setType("Group");
-        ticket.setPrice(totalPrice);
-        ticket.setPurchaseDate(purchaseDate);
-        ticket.setExpirationDate(expirationDate);
-        ticket.setQrCode(generateQrCode());
 
-        // Initialize default values for adults and seniors
         int totalAdults = 0;
         int totalSeniors = 0;
-
 
         for (Map<String, Object> detail : ticketDetails) {
             String category = (String) detail.get("category");
             int quantity = (int) detail.get("quantity");
 
-            if ("Excursion".equals(category)) {
-                totalAdults += quantity; // Total number of people for Excursion
-            } else if ("Standard".equals(category)) {
-                totalAdults += quantity; // Update totalAdults with Standard tickets
+            double standardPrice = priceRepository.findByTypeAndCategory("Ticket", category).getValue();
+            double finalPrice = applyPromotionIfAvailable(standardPrice, category);
+
+            totalPrice += finalPrice * quantity;
+
+            if ("Standard".equals(category)) {
+                totalAdults += quantity;
             } else if ("Senior".equals(category)) {
-                totalSeniors += quantity; // Update totalSeniors with Senior tickets
+                totalSeniors += quantity;
             }
         }
 
+        ticket.setPrice(totalPrice);
         ticket.setAdults(totalAdults);
         ticket.setSeniors(totalSeniors);
+        ticket.setPurchaseDate(purchaseDate);
+        ticket.setExpirationDate(expirationDate);
+        ticket.setQrCode(generateQrCode());
 
         saveTicket(ticket);
         pdfPaths.add(ticket.getPdfPath());
-        System.out.println("pdfPaths: " + pdfPaths);
+
         return pdfPaths;
     }
 
@@ -117,18 +114,20 @@ public class TicketService {
             String type = (String) detail.get("type");
             String category = (String) detail.get("category");
             int quantity = (int) detail.get("quantity");
-            double price = priceRepository.findByTypeAndCategory(type, category).getValue();
+
+            double standardPrice = priceRepository.findByTypeAndCategory(type, category).getValue();
+
+            double finalPrice = applyPromotionIfAvailable(standardPrice, category);
 
             for (int i = 0; i < quantity; i++) {
                 Ticket ticket = new Ticket();
                 ticket.setEmail(email);
-                ticket.setType(category); // Save the category as the ticket type
-                ticket.setPrice(price);
+                ticket.setType(category);
+                ticket.setPrice(finalPrice);
                 ticket.setPurchaseDate(purchaseDate);
                 ticket.setExpirationDate(expirationDate);
                 ticket.setQrCode(generateQrCode());
 
-                // Set the number of adults/children based on ticket type
                 if ("Standard".equals(category)) {
                     ticket.setAdults(1);
                     ticket.setSeniors(0);
@@ -310,18 +309,26 @@ public class TicketService {
 
     public double applyPromotionIfAvailable(double originalPrice, String category) {
         LocalDateTime now = LocalDateTime.now();
-        Optional<Promotion> promotion = promotionRepository.findActivePromotionForCategory(now, category);
-        System.out.println("Promotion: " + promotion);
+        List<Promotion> promotions = promotionRepository.findActivePromotions(now);
+        System.out.println("Promotions: " + promotions);
 
-        if (promotion.isPresent()) {
-            Promotion activePromotion = promotion.get();
-            double discount = activePromotion.getDiscountAmount();
-            double discountedPrice = originalPrice * (1 - discount / 100.0);
+        double discountedPrice = originalPrice;
+        for (Promotion promotion : promotions) {
+            // Logowanie kategorii promocji
+            System.out.println("Checking promotion: " + promotion.getDescription());
+            promotion.getCategories().forEach(pc -> System.out.println("Promotion category: " + pc.getCategory()));
 
-            // Round to the nearest whole number
-            return Math.round(discountedPrice);
+            if (promotion.getCategories().stream().anyMatch(pc -> pc.getCategory().equalsIgnoreCase(category))) {
+                double discount = promotion.getDiscountAmount();
+                discountedPrice = originalPrice * (1 - discount / 100.0);
+                System.out.println("Applied promotion: " + promotion.getDescription() + " with discount: " + discount);
+                break; // Assuming one promotion applies at a time
+            }
         }
 
-        return originalPrice;
+        double finalPrice = Math.round(discountedPrice * 100.0) / 100.0; // Round to two decimal places
+        System.out.println("Final price after promotion: " + finalPrice);
+        return finalPrice;
     }
+
 }

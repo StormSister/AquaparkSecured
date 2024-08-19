@@ -21,6 +21,7 @@ public class PriceController {
     @GetMapping
     public ResponseEntity<List<Price>> getAllPrices() {
         List<Price> prices = priceService.getAllPrices();
+        System.out.println("prices: " + prices);
         return ResponseEntity.ok(prices);
     }
 

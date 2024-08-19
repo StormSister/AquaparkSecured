@@ -1,15 +1,16 @@
 package com.example.aquaparksecured.promotion;
 
-
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.Date;
+import java.sql.Timestamp;
+import java.util.List;
 
+@Entity
 @Getter
 @Setter
-@Entity
 @Table(name = "promotion")
 public class Promotion {
 
@@ -18,13 +19,10 @@ public class Promotion {
     private Long id;
 
     @Column(name = "start_date")
-    private Date startDate;
+    private Timestamp startDate;
 
     @Column(name = "end_date")
-    private Date endDate;
-
-    @Column(name = "discount_type")
-    private String discountType;
+    private Timestamp endDate;
 
     @Column(name = "discount_amount")
     private int discountAmount;
@@ -34,4 +32,9 @@ public class Promotion {
 
     @Column(name = "image_path")
     private String imagePath;
+
+    // One-to-Many relationship with PromotionCategory
+    @OneToMany(mappedBy = "promotion", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+//    @JsonManagedReference
+    private List<PromotionCategory> categories;
 }
