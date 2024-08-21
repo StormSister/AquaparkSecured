@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -37,6 +38,8 @@ public class TicketService {
 
     @Autowired
     private PromotionService promotionService;
+
+    private static final String TICKET_BASE_PATH = "tickets/";
 
 
 
@@ -224,12 +227,15 @@ public class TicketService {
         return ticketRepository.findByUserId(userId);
     }
 
-    public List<Ticket> getUserTickets(String email) {
-        System.out.println("Fetching tickets for email: " + email);
-        List<Ticket> tickets = ticketRepository.findByEmail(email);
-        System.out.println("Found tickets: " + tickets.size());
-        return tickets;
+    public List<String> getActiveUserTickets(String userEmail) {
+        List<Ticket> activeTickets = ticketRepository.findByEmailAndStatus(userEmail, "active");
+
+        // Map ticket objects to their file names
+        return activeTickets.stream()
+                .map(Ticket::extractFileName)
+                .collect(Collectors.toList());
     }
+
 
     public List<String> getUserTicketPath(String email) {
         List<Ticket> tickets = ticketRepository.findByEmail(email);

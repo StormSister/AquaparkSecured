@@ -2,12 +2,16 @@ package com.example.aquaparksecured.tickets;
 
 
 import com.example.aquaparksecured.price.Price;
-import com.example.aquaparksecured.price.PriceRepository;
 import com.example.aquaparksecured.price.PriceService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +28,8 @@ public class TicketController {
         this.ticketService = ticketService;
         this.priceService = priceService;
     }
+
+    private final Path ticketDirectory =  Paths.get("C:/Users/momika/AquaparkSecured/src/main/resources/tickets/");
 
 
     @PostMapping("/purchase")
@@ -56,15 +62,15 @@ public class TicketController {
     }
 
 
-    @GetMapping("/tickets")
-    public ResponseEntity<List<String>> getUserTicketPaths(@RequestParam("email") String userEmail) {
-        System.out.println("Fetching ticket paths for user: " + userEmail);
+    @GetMapping("/api/active")
+    public List<String> getUserActiveTickets(@RequestParam("email") String userEmail) {
+        System.out.println("Fetching active ticket names for user: " + userEmail);
 
-        List<String> pdfPaths = ticketService.getUserTicketPath(userEmail);
+        List<String> activeTicketNames = ticketService.getActiveUserTickets(userEmail);
 
-        System.out.println("Found ticket paths: " + pdfPaths);
+        System.out.println("Found active ticket names: " + activeTicketNames);
 
-        return ResponseEntity.ok(pdfPaths);
+        return activeTicketNames;
     }
 
     @PostMapping("/api/check-qr")
@@ -107,5 +113,32 @@ public class TicketController {
 
         System.out.println("Ticket types and prices: " + ticketTypes);
         return ResponseEntity.ok(ticketTypes);
+    }
+
+    @GetMapping("/api/file/{filename:.+}")
+    public ResponseEntity<Resource> getTicket(@PathVariable String filename) {
+        System.out.println("Received request to download file: " + filename);
+
+        try {
+            Path filePath = ticketDirectory.resolve(filename).normalize();
+            System.out.println("Resolved file path: " + filePath.toAbsolutePath());
+
+            Resource resource = new UrlResource(filePath.toUri());
+            System.out.println("Resource exists: " + resource.exists());
+            System.out.println("Resource is readable: " + resource.isReadable());
+
+            if (resource.exists() && resource.isReadable()) {
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                        .body(resource);
+            } else {
+                System.out.println("File not found or not readable: " + filePath.toAbsolutePath());
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+        } catch (Exception e) {
+            System.out.println("Error occurred while retrieving the file: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }

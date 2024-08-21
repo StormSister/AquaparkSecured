@@ -15,5 +15,7 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
     Optional<Ticket> findByQrCode(String qrCode);
 
+    List<Ticket> findByEmailAndStatus(String email, String status);
+
     // methods
 }

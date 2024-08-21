@@ -34,7 +34,7 @@ public class ReservationPdfService {
 
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-            String logoPath = "src/main/resources/logo/logo.png";  
+            String logoPath = "src/main/resources/logo/logo.png";
             Image logoImage = new Image(ImageDataFactory.create(logoPath));
             document.add(logoImage);
 

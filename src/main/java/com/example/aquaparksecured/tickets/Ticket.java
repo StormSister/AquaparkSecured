@@ -2,6 +2,8 @@ package com.example.aquaparksecured.tickets;
 
 import com.example.aquaparksecured.user.AppUser;
 import jakarta.persistence.*;
+
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
@@ -49,4 +51,8 @@ public class Ticket {
 
     @Column(nullable = false)
     private String status;
+
+    public String extractFileName() {
+        return Paths.get(pdfPath).getFileName().toString();
+    }
 }
