@@ -21,4 +21,7 @@ public class Room {
     @ManyToOne
     @JoinColumn(name = "price_id", nullable = false)
     private Price price;
+
+
 }
+

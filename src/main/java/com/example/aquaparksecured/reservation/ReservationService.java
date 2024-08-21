@@ -2,6 +2,8 @@ package com.example.aquaparksecured.reservation;
 
 
 import com.example.aquaparksecured.email.EmailService;
+import com.example.aquaparksecured.promotion.Promotion;
+import com.example.aquaparksecured.promotion.PromotionService;
 import com.example.aquaparksecured.room.Room;
 import com.example.aquaparksecured.room.RoomRepository;
 import com.example.aquaparksecured.user.AppUser;
@@ -30,14 +32,17 @@ public class ReservationService {
 
     private final PasswordEncoder passwordEncoder;
 
+    private final PromotionService promotionService;
+
     @Autowired
-    public ReservationService(ReservationRepository reservationRepository, RoomRepository roomRepository, UserRepository userRepository, ReservationPdfService reservationPdfService, EmailService emailService, PasswordEncoder passwordEncoder) {
+    public ReservationService(ReservationRepository reservationRepository, RoomRepository roomRepository, UserRepository userRepository, ReservationPdfService reservationPdfService, EmailService emailService, PasswordEncoder passwordEncoder,PromotionService promotionService) {
         this.reservationRepository = reservationRepository;
         this.roomRepository = roomRepository;
         this.userRepository = userRepository;
         this.reservationPdfService = reservationPdfService;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
+        this.promotionService = promotionService;
 
     }
 
@@ -120,5 +125,26 @@ public class ReservationService {
 
 
     public List<Reservation> getAllReservations() {return reservationRepository.findAll();
+    }
+
+    public double calculateReservationPrice(double originalPrice, String category) {
+        return promotionService.applyPromotionIfAvailable(originalPrice, category);
+    }
+
+    public double applyRoomPromotionIfAvailable(double originalPrice, String category, LocalDate startDate, LocalDate endDate) {
+        List<Promotion> promotions = promotionService.getPromotionsForDateRange(startDate, endDate);
+
+        double discountedPrice = originalPrice;
+
+        for (Promotion promotion : promotions) {
+            if (promotion.getCategories().stream().anyMatch(pc -> pc.getCategory().equalsIgnoreCase(category))) {
+                double discount = promotion.getDiscountAmount();
+                discountedPrice = originalPrice * (1 - discount / 100.0);
+                System.out.println("Applying discount: " + discount + "%, Original Price: " + originalPrice + ", Discounted Price: " + discountedPrice);
+                break;
+            }
+        }
+
+        return Math.round(discountedPrice * 100.0) / 100.0;
     }
 }

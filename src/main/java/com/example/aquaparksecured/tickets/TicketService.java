@@ -4,6 +4,7 @@ import com.example.aquaparksecured.email.EmailService;
 import com.example.aquaparksecured.price.PriceRepository;
 import com.example.aquaparksecured.promotion.Promotion;
 import com.example.aquaparksecured.promotion.PromotionRepository;
+import com.example.aquaparksecured.promotion.PromotionService;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,9 @@ public class TicketService {
 
     @Autowired
     private PromotionRepository promotionRepository;
+
+    @Autowired
+    private PromotionService promotionService;
 
 
 
@@ -314,7 +318,6 @@ public class TicketService {
 
         double discountedPrice = originalPrice;
         for (Promotion promotion : promotions) {
-            // Logowanie kategorii promocji
             System.out.println("Checking promotion: " + promotion.getDescription());
             promotion.getCategories().forEach(pc -> System.out.println("Promotion category: " + pc.getCategory()));
 
@@ -322,11 +325,11 @@ public class TicketService {
                 double discount = promotion.getDiscountAmount();
                 discountedPrice = originalPrice * (1 - discount / 100.0);
                 System.out.println("Applied promotion: " + promotion.getDescription() + " with discount: " + discount);
-                break; // Assuming one promotion applies at a time
+                break;
             }
         }
 
-        double finalPrice = Math.round(discountedPrice * 100.0) / 100.0; // Round to two decimal places
+        double finalPrice = Math.round(discountedPrice * 100.0) / 100.0;
         System.out.println("Final price after promotion: " + finalPrice);
         return finalPrice;
     }

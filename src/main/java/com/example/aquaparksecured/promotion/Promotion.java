@@ -24,6 +24,12 @@ public class Promotion {
     @Column(name = "end_date")
     private Timestamp endDate;
 
+    @Column(name = "start_display")
+    private Timestamp startDisplay;
+
+    @Column(name = "end_display")
+    private Timestamp endDisplay;
+
     @Column(name = "discount_amount")
     private int discountAmount;
 

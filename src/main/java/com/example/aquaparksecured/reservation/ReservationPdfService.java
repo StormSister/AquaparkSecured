@@ -32,10 +32,9 @@ public class ReservationPdfService {
             PdfDocument pdf = new PdfDocument(writer);
             Document document = new Document(pdf);
 
-            // Use DateTimeFormatter to format dates without time
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-            String logoPath = "src/main/resources/logo/logo.png";  // Set the path to the logo
+            String logoPath = "src/main/resources/logo/logo.png";  
             Image logoImage = new Image(ImageDataFactory.create(logoPath));
             document.add(logoImage);
 
