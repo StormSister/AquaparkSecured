@@ -6,6 +6,7 @@ import lombok.Setter;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
+
 @Getter
 @Setter
 public class PromotionDTO {
@@ -17,5 +18,7 @@ public class PromotionDTO {
     private String description;
     private String imagePath;
     private List<CategoryDTO> categories;
+    private Timestamp startDisplay;
+    private Timestamp endDisplay;
 
 }

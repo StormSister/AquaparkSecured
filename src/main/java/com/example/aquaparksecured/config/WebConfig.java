@@ -9,7 +9,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // Define the path for serving files
+
         registry.addResourceHandler("/tickets/api/file/**")
                 .addResourceLocations("file:/C:/Users/momika/AquaparkSecured/src/main/resources/tickets/");
     }
