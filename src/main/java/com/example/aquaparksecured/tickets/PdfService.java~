@@ -46,7 +46,7 @@ public class PdfService {
             document.add(new Paragraph("Ticket ID: " + ticket.getId()));
             document.add(new Paragraph("Email: " + ticket.getEmail()));
             document.add(new Paragraph("Type: " + ticket.getType()));
-            document.add(new Paragraph(String.format("Price: %.2f", ticket.getPrice())));
+            document.add(new Paragraph("Price: " + ticket.getPrice()));
             document.add(new Paragraph("Purchase Date: " + ticket.getPurchaseDate().format(formatter)));
             document.add(new Paragraph("Expiration Date: " + ticket.getExpirationDate().format(formatter)));
             document.add(new Paragraph("Adults: " + ticket.getAdults()));

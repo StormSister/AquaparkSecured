@@ -1,47 +1,46 @@
 package com.example.aquaparksecured.tickets;
 
 import com.example.aquaparksecured.email.EmailService;
-import com.example.aquaparksecured.price.PriceRepository;
 import com.example.aquaparksecured.promotion.Promotion;
 import com.example.aquaparksecured.promotion.PromotionRepository;
-import com.example.aquaparksecured.promotion.PromotionService;
 import jakarta.mail.MessagingException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 public class TicketService {
 
-    @Autowired
-    private PriceRepository priceRepository;
 
-    @Autowired
-    private TicketRepository ticketRepository;
-
-    @Autowired
-    private PdfService pdfService;
-
-    @Autowired
-    private EmailService emailService;
-
-    @Autowired
-    private PromotionRepository promotionRepository;
-
-    @Autowired
-    private PromotionService promotionService;
+    private final TicketRepository ticketRepository;
+    private final PdfService pdfService;
+    private final EmailService emailService;
+    private final PromotionRepository promotionRepository;
+    private final TicketStrategyFactory ticketStrategyFactory;
 
     private static final String TICKET_BASE_PATH = "tickets/";
 
+    public TicketService(TicketRepository ticketRepository,
+                         PdfService pdfService,
+                         EmailService emailService,
+                         PromotionRepository promotionRepository,
+                         TicketStrategyFactory ticketStrategyFactory) {
 
+        this.ticketRepository = ticketRepository;
+        this.pdfService = pdfService;
+        this.emailService = emailService;
+        this.promotionRepository = promotionRepository;
+        this.ticketStrategyFactory = ticketStrategyFactory;
+    }
 
     @Transactional
     public Ticket findById(Long id) {
@@ -53,6 +52,28 @@ public class TicketService {
         LocalDateTime purchaseDate = LocalDateTime.now();
         LocalDateTime expirationDate = purchaseDate.plusDays(31);
 
+        validateExcursionRequirements(ticketDetails);
+
+        List<String> pdfPaths;
+
+        if (isGroup) {
+
+            TicketStrategy groupTicketStrategy = ticketStrategyFactory.getStrategy("Group");
+            pdfPaths = groupTicketStrategy.createTickets(email, ticketDetails, purchaseDate, expirationDate);
+        } else {
+
+            pdfPaths = ticketDetails.stream()
+                    .map(detail -> (String) detail.get("category"))
+                    .distinct()
+                    .map(category -> ticketStrategyFactory.getStrategy(category))
+                    .flatMap(strategy -> strategy.createTickets(email, ticketDetails, purchaseDate, expirationDate).stream())
+                    .collect(Collectors.toList());
+        }
+
+        sendTicketsByEmail(email, pdfPaths);
+    }
+
+    private void validateExcursionRequirements(List<Map<String, Object>> ticketDetails) {
         Optional<Map<String, Object>> excursionDetail = ticketDetails.stream()
                 .filter(detail -> "Excursion".equals(detail.get("category")))
                 .findFirst();
@@ -63,120 +84,6 @@ public class TicketService {
                 throw new IllegalArgumentException("Aby wybrać bilet typu Excursion, musi być co najmniej 20 osób.");
             }
         }
-
-        List<String> pdfPaths;
-
-        if (isGroup) {
-            pdfPaths = createGroupTicket(email, ticketDetails, purchaseDate, expirationDate);
-        } else {
-            pdfPaths = createIndividualTickets(email, ticketDetails, purchaseDate, expirationDate);
-        }
-
-        sendTicketsByEmail(email, pdfPaths);
-    }
-
-    private List<String> createGroupTicket(String email, List<Map<String, Object>> ticketDetails, LocalDateTime purchaseDate, LocalDateTime expirationDate) {
-        double totalPrice = 0.0;
-        List<String> pdfPaths = new ArrayList<>();
-        Ticket ticket = new Ticket();
-        ticket.setEmail(email);
-        ticket.setType("Group");
-
-        int totalAdults = 0;
-        int totalSeniors = 0;
-
-        for (Map<String, Object> detail : ticketDetails) {
-            String category = (String) detail.get("category");
-            int quantity = (int) detail.get("quantity");
-
-            double standardPrice = priceRepository.findByTypeAndCategory("Ticket", category).getValue();
-            double finalPrice = applyPromotionIfAvailable(standardPrice, category);
-
-            totalPrice += finalPrice * quantity;
-
-            if ("Standard".equals(category)) {
-                totalAdults += quantity;
-            } else if ("Senior".equals(category)) {
-                totalSeniors += quantity;
-            }
-        }
-
-        ticket.setPrice(totalPrice);
-        ticket.setAdults(totalAdults);
-        ticket.setSeniors(totalSeniors);
-        ticket.setPurchaseDate(purchaseDate);
-        ticket.setExpirationDate(expirationDate);
-        ticket.setQrCode(generateQrCode());
-
-        saveTicket(ticket);
-        pdfPaths.add(ticket.getPdfPath());
-
-        return pdfPaths;
-    }
-
-    private List<String> createIndividualTickets(String email, List<Map<String, Object>> ticketDetails, LocalDateTime purchaseDate, LocalDateTime expirationDate) {
-        List<String> pdfPaths = new ArrayList<>();
-
-        for (Map<String, Object> detail : ticketDetails) {
-            String type = (String) detail.get("type");
-            String category = (String) detail.get("category");
-            int quantity = (int) detail.get("quantity");
-
-            double standardPrice = priceRepository.findByTypeAndCategory(type, category).getValue();
-
-            double finalPrice = applyPromotionIfAvailable(standardPrice, category);
-
-            for (int i = 0; i < quantity; i++) {
-                Ticket ticket = new Ticket();
-                ticket.setEmail(email);
-                ticket.setType(category);
-                ticket.setPrice(finalPrice);
-                ticket.setPurchaseDate(purchaseDate);
-                ticket.setExpirationDate(expirationDate);
-                ticket.setQrCode(generateQrCode());
-
-                if ("Standard".equals(category)) {
-                    ticket.setAdults(1);
-                    ticket.setSeniors(0);
-                } else if ("Senior".equals(category)) {
-                    ticket.setAdults(0);
-                    ticket.setSeniors(1);
-                } else {
-                    ticket.setAdults(0);
-                    ticket.setSeniors(0);
-                }
-
-                saveTicket(ticket);
-                pdfPaths.add(ticket.getPdfPath());
-            }
-        }
-
-        return pdfPaths;
-    }
-
-    private double calculateGroupPrice(List<Map<String, Object>> ticketDetails) {
-        double totalPrice = 0.0;
-
-        // Handle excursion tickets separately
-        Optional<Map<String, Object>> excursionDetail = ticketDetails.stream()
-                .filter(detail -> "Excursion".equals(detail.get("category")))
-                .findFirst();
-
-        if (excursionDetail.isPresent()) {
-            int quantity = (int) excursionDetail.get().get("quantity");
-            double excursionPrice = priceRepository.findByTypeAndCategory("Ticket", "Excursion").getValue();
-            totalPrice += quantity * excursionPrice;
-        } else {
-            // Handle non-excursion tickets
-            for (Map<String, Object> detail : ticketDetails) {
-                String category = (String) detail.get("category");
-                int quantity = (int) detail.get("quantity");
-                double ticketPrice = priceRepository.findByTypeAndCategory("Ticket", category).getValue();
-                totalPrice += ticketPrice * quantity;
-            }
-        }
-
-        return totalPrice;
     }
 
     private String generateQrCode() {
@@ -230,7 +137,6 @@ public class TicketService {
     public List<String> getActiveUserTickets(String userEmail) {
         List<Ticket> activeTickets = ticketRepository.findByEmailAndStatus(userEmail, "active");
 
-        // Map ticket objects to their file names
         return activeTickets.stream()
                 .map(Ticket::extractFileName)
                 .collect(Collectors.toList());
@@ -304,9 +210,19 @@ public class TicketService {
                     String expirationDateStr = line.substring(17).trim();
                     ticket.setExpirationDate(LocalDateTime.parse(expirationDateStr, formatter));
                 } else if (line.startsWith("Adults: ")) {
-                    ticket.setAdults(Integer.parseInt(line.substring(8).trim()));
+                    String lineValue = line.substring(8).trim();
+                    if (lineValue.isEmpty()) {
+                        System.out.println("Pusta wartość dla Adults.");
+                        throw new NumberFormatException("Pusta wartość dla Adults.");
+                    }
+                    ticket.setAdults(Integer.parseInt(lineValue));
                 } else if (line.startsWith("Seniors: ")) {
-                    ticket.setSeniors(Integer.parseInt(line.substring(10).trim()));
+                    String lineValue = line.substring(9).trim();
+                    if (lineValue.isEmpty()) {
+                        System.out.println("Pusta wartość dla Seniors.");
+                        throw new NumberFormatException("Pusta wartość dla Seniors.");
+                    }
+                    ticket.setSeniors(Integer.parseInt(lineValue));
                 }
             }
         } catch (NumberFormatException | DateTimeParseException e) {

@@ -1,0 +1,101 @@
+package com.example.aquaparksecured.tickets;
+
+import com.example.aquaparksecured.price.PriceRepository;
+
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+public abstract class AbstractTicketStrategy implements TicketStrategy {
+
+    protected PriceRepository priceRepository;
+    protected PdfService pdfService;
+    protected TicketRepository ticketRepository;
+
+    protected AbstractTicketStrategy(PriceRepository priceRepository, PdfService pdfService, TicketRepository ticketRepository) {
+        this.priceRepository = priceRepository;
+        this.pdfService = pdfService;
+        this.ticketRepository = ticketRepository;
+    }
+
+    protected String generateQrCode() {
+        return UUID.randomUUID().toString();
+    }
+
+    protected double getPriceForCategory(String category) {
+        return priceRepository.findByTypeAndCategory("Ticket", category).getValue();
+    }
+
+    protected List<String> createTickets(String email, List<Map<String, Object>> ticketDetails, LocalDateTime purchaseDate, LocalDateTime expirationDate, int adults, int seniors) {
+        List<String> pdfPaths = new ArrayList<>();
+
+
+
+        if (isGroup) {
+
+            Ticket groupTicket = createGroupTicket(email, ticketDetails, purchaseDate, expirationDate);
+            pdfPaths = List.of(groupTicket.getPdfPath()); // Dodaj ścieżkę PDF dla biletu grupowego
+        } else {
+            // Obsługa biletów standardowych
+            pdfPaths = ticketDetails.stream()
+                    .map(detail -> (String) detail.get("category"))
+                    .distinct()
+                    .map(category -> ticketStrategyFactory.getStrategy(category))
+                    .flatMap(strategy -> strategy.createTickets(email, ticketDetails, purchaseDate, expirationDate).stream())
+                    .collect(Collectors.toList());
+        }
+
+        sendTicketsByEmail(email, pdfPaths);
+
+        for (Map<String, Object> detail : ticketDetails) {
+            String category = (String) detail.get("category");
+            int quantity = (int) detail.get("quantity");
+
+            double price = getPriceForCategory(category);
+
+            for (int i = 0; i < quantity; i++) {
+                Ticket ticket = createTicket(email, category, price, purchaseDate, expirationDate, adults, seniors);
+                saveTicket(ticket);
+                pdfPaths.add(ticket.getPdfPath());
+            }
+        }
+
+        return pdfPaths;
+    }
+
+    protected Ticket createTicket(String email, String category, double price, LocalDateTime purchaseDate, LocalDateTime expirationDate, int adults, int seniors) {
+        Ticket ticket = new Ticket();
+        ticket.setEmail(email);
+        ticket.setType(category);
+        ticket.setPrice(price);
+        ticket.setPurchaseDate(purchaseDate);
+        ticket.setExpirationDate(expirationDate);
+        ticket.setQrCode(generateQrCode());
+        ticket.setAdults(adults);
+        ticket.setSeniors(seniors);
+        return ticket;
+    }
+
+    protected void saveTicket(Ticket ticket) {
+        ticket.setPdfPath("path/to/pdf");
+        ticket.setStatus("active");
+
+        ticketRepository.save(ticket);
+
+        try {
+            String pdfPath = pdfService.generateTicketPdf(ticket);
+            ticket.setPdfPath(pdfPath);
+            ticketRepository.save(ticket);
+        } catch (IOException e) {
+            System.err.println("Error generating PDF for ticket ID: " + ticket.getId());
+            e.printStackTrace();
+            throw new RuntimeException("PDF generation failed for ticket: " + ticket.getId(), e);
+        }
+    }
+
+    public abstract List<String> createTickets(String email, List<Map<String, Object>> ticketDetails, LocalDateTime purchaseDate, LocalDateTime expirationDate);
+}
